@@ -26,7 +26,6 @@ def get_token():
     else:
         return response.status_code, response.text
 
-import requests
 
 def create_course(token, cno, cname, ccredit, cdept):
     """Creates a course using the FastAPI backend."""
