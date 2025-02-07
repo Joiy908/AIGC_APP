@@ -1,6 +1,10 @@
 import os
-import time
+import json
+from typing import Dict, Any
+import subprocess
 
+
+import requests
 from cozepy import (
     COZE_CN_BASE_URL,
     Coze,
@@ -10,6 +14,7 @@ from cozepy import (
     ChatStatus,
     MessageContentType
 )
+
 
 # Retrieve API token from environment variables
 coze_api_token = os.getenv("COZE_API_TOKEN")
@@ -35,20 +40,7 @@ def send_msg(conversation_id, msg):
     for message in chat_poll.messages:
         return message.content
 
-# conversation = coze.conversations.create()
-# msg1 = Message.build_user_question_text("self.user_prompt : '添加一个课程：CNO: 11110140, Name: 大数据存储与管理, Credit: 3, Dept: 人工智能学院'")
 
-# msg2 = Message.build_user_question_text("Access Token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJyb290IiwiZXhwIjoxNzM4MjA0Mjc1fQ.MiP72x8KLu-M10hI16UrSFIkfggcltrjWwh6UV0c8lw")
-# msg3 = Message.build_user_question_text("409{\"detail\":\"Course with cno '11110140' already exists.\"}")
-# send_msg(conversation.id, msg1)
-# send_msg(conversation.id, msg2)
-# send_msg(conversation.id, msg3)
-
-
-import requests
-from typing import Dict, Any
-
-debug = True
 def execute_api_call(use_https: bool, domain: str, api_call: Dict[str, Any]) -> Dict[str, Any]:
     """
     执行API调用，并返回响应结果。
@@ -106,33 +98,64 @@ def execute_api_call(use_https: bool, domain: str, api_call: Dict[str, Any]) -> 
             "data": {"error": str(e)}
         }
 
-import json
 
-msg1 = Message.build_user_question_text("user_prompt: \
-    先获取一个token，by (auth user: root, auth password: abc，添加application/x-www-form-urlencoded header)。\
-    然后以后的每次请求都需要在header中加入Authorization: Bearer <token>。\
-    然后添加一个课程：CNO: test11, Name: 大数据存储与管理, Credit: 3, Dept: 人工智能学院")
-
-conversation = coze.conversations.create()
-
-# msg2 = Message.build_user_question_text("Access Token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJyb290IiwiZXhwIjoxNzM4MjA0Mjc1fQ.MiP72x8KLu-M10hI16UrSFIkfggcltrjWwh6UV0c8lw")
-# msg3 = Message.build_user_question_text("409{\"detail\":\"Course with cno '11110140' already exists.\"}")
-# send_msg(conversation.id, msg1)
-# send_msg(conversation.id, msg2)
-# send_msg(conversation.id, msg3)
+def execute_python_code(code):
+    try:
+        result = subprocess.run(["python", "-c", code], capture_output=True, text=True, timeout=5)
+        output = result.stdout.strip()
+        if result.stderr:
+            output += f"\nerr: {result.stderr.strip()}"
+    except Exception as e:
+        output = f"执行错误: {str(e)}"
+    return output
 
 
-conversation_id = conversation.id
-msg = msg1
-for _ in range(5):
-    print("sending msg: ", msg)
-    res = send_msg(conversation_id, msg)
-    res_dict = json.loads(res)
-    if res_dict['status'] != 'in_progress':
-        print("end of conversation: ", res_dict)
-        break
-    print(f"webClient response: {res_dict}")
-    call_res = execute_api_call(False, '127.0.0.1:8000', res_dict['api_calls'][0])
-    msg = Message.build_user_question_text(json.dumps(call_res))
+def do_prompt(conversation_id, msg):
+    for _ in range(10):
+        if debug:
+            print("sending msg: ", msg.content)
+        res = send_msg(conversation_id, msg)
+        try:
+            res_dict = json.loads(res)
+        except json.JSONDecodeError as e:
+            print("json decode error: ", e)
+            msg = Message.build_user_question_text("json decode error: " + e)
+            continue
 
 
+        print(f"WebClient: {res_dict if debug else res_dict['info']} ...")
+
+        if res_dict['python_code']:
+            print(">> 请求执行pyton代码: \n", res_dict['python_code'], 
+                  "\n是否执行(y/n): ", end="")
+            if input() != 'y':
+                print("代码未执行, 请调整prompt 或 改进项目代码")
+                break
+            else:
+                result = execute_python_code(res_dict['python_code'])
+                print("执行结果: ", result)
+                break
+        
+        if res_dict['status'] == 'error' or res_dict['status'] == 'completed':
+            print("end of conversation: ", res_dict if debug else res_dict['info'])
+            break
+        
+        msg_list = []
+        for api_call in res_dict['api_calls']:
+            call_res = execute_api_call(False, '127.0.0.1:8000', api_call)
+            msg_list.append(call_res)
+        msg = Message.build_user_question_text(json.dumps(msg_list))
+
+
+def main():
+    conversation = coze.conversations.create()
+    while True:
+        print("> ", end="")
+        user_prompt = input()
+        msg = Message.build_user_question_text(user_prompt)
+        do_prompt(conversation.id, msg)
+
+
+if __name__ == '__main__':
+    debug = False
+    main()
