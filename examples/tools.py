@@ -1,47 +1,18 @@
-import os
 import json
-from typing import Dict, Any
 import subprocess
 
-
 import requests
-from cozepy import (
-    COZE_CN_BASE_URL,
-    Coze,
-    TokenAuth,
-    Message,
-    MessageRole,
-    ChatStatus,
-    MessageContentType
+from cozepy import Message
+
+from .coze_llm import (
+    BOT_ID,
+    USER_ID,
+    chat_no_stream,
+    coze,
 )
 
 
-# Retrieve API token from environment variables
-coze_api_token = os.getenv("COZE_API_TOKEN")
-coze_api_base = COZE_CN_BASE_URL
-
-# Initialize Coze client
-coze = Coze(auth=TokenAuth(token=coze_api_token), base_url=coze_api_base)
-
-# Define bot and user IDs
-bot_id = "7465179263470321698"
-user_id = "user id"
-
-
-def send_msg(conversation_id, msg):
-    chat_poll = coze.chat.create_and_poll(
-        bot_id=bot_id,
-        user_id=user_id,
-        additional_messages=[
-            msg
-        ],
-        conversation_id=conversation_id
-    )
-    for message in chat_poll.messages:
-        return message.content
-
-
-def execute_api_call(use_https: bool, domain: str, api_call: Dict[str, Any]) -> Dict[str, Any]:
+def execute_api_call(use_https: bool, domain: str, api_call: dict[str, any], vorbose: bool) -> dict[str, any]:
     """
     执行API调用，并返回响应结果。
 
@@ -51,7 +22,7 @@ def execute_api_call(use_https: bool, domain: str, api_call: Dict[str, Any]) -> 
     :return: 包含响应状态码、响应头和响应数据的字典
     """
     # 构建 URL
-    if debug:
+    if vorbose:
         print(f"WebClient exec http call: {api_call}")
     protocol = "https" if use_https else "http"
     path = api_call["path"]
@@ -82,7 +53,7 @@ def execute_api_call(use_https: bool, domain: str, api_call: Dict[str, Any]) -> 
 
     # 发送请求
     try:
-        if debug:
+        if vorbose:
             print(f"WebClient sending request: {request_kwargs}")
         response = requests.request(**request_kwargs)
 
@@ -110,11 +81,11 @@ def execute_python_code(code):
     return output
 
 
-def do_prompt(conversation_id, msg):
+def do_prompt(conversation_id, msg, vorbose: bool):
     for _ in range(10):
-        if debug:
+        if vorbose:
             print("sending msg: ", msg.content)
-        res = send_msg(conversation_id, msg)
+        res = chat_no_stream(msg, BOT_ID, USER_ID, conversation_id)
         try:
             res_dict = json.loads(res)
         except json.JSONDecodeError as e:
@@ -123,10 +94,10 @@ def do_prompt(conversation_id, msg):
             continue
 
 
-        print(f"WebClient: {res_dict if debug else res_dict['info']} ...")
+        print(f"WebClient: {res_dict if vorbose else res_dict['info']} ...")
 
         if res_dict['python_code']:
-            print(">> 请求执行pyton代码: \n", res_dict['python_code'], 
+            print(">> 请求执行pyton代码: \n", res_dict['python_code'],
                   "\n是否执行(y/n): ", end="")
             if input() != 'y':
                 print("代码未执行, 请调整prompt 或 改进项目代码")
@@ -135,11 +106,11 @@ def do_prompt(conversation_id, msg):
                 result = execute_python_code(res_dict['python_code'])
                 print("执行结果: ", result)
                 break
-        
+
         if res_dict['status'] == 'error' or res_dict['status'] == 'completed':
-            print("end of conversation: ", res_dict if debug else res_dict['info'])
+            print("end of conversation: ", res_dict if vorbose else res_dict['info'])
             break
-        
+
         msg_list = []
         for api_call in res_dict['api_calls']:
             call_res = execute_api_call(False, '127.0.0.1:8000', api_call)
@@ -155,7 +126,5 @@ def main():
         msg = Message.build_user_question_text(user_prompt)
         do_prompt(conversation.id, msg)
 
-
-if __name__ == '__main__':
-    debug = False
+if __name__ == '__main___':
     main()

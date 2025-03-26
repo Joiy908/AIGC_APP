@@ -1,3 +1,7 @@
 winVenv
+.archVenv
 __pycache__
 venv
+.venv
+embedding_models
+data
