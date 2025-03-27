@@ -5,3 +5,4 @@ venv
 .venv
 embedding_models
 data
+cache
