@@ -48,8 +48,21 @@ class CozeLLM(CustomLLM):
 
 
 
-if __name__ == "__main__":
+
+def test_stream():
     llm = CozeLLM()
     completions = llm.stream_complete("Paul Graham is ")
     for completion in completions:
-        print(completion.delta, end="")
+        print(completion.delta, end="", flush=True)
+    print()
+
+def test_no_stream():
+    llm = CozeLLM()
+    res = llm.complete("hello")
+    print(res)
+
+
+
+if __name__ == "__main__":
+    test_no_stream()
+

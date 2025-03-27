@@ -5,6 +5,7 @@ from cozepy import (
     ChatEventType,
     Coze,
     Message,
+    MessageType,
     TokenAuth,
 )
 from dotenv import load_dotenv
@@ -68,21 +69,22 @@ def chat_no_stream(msg: str, bot_id:str, user_id:str = 'user id',
         bot_id=bot_id,
         user_id=user_id,
         conversation_id=conversation_id,
-        additional_messages=[
-            msg
-        ],
+        additional_messages=[Message.build_user_question_text(msg)],
     )
     for message in chat_poll.messages:
-        return message.content
+        if message.type == MessageType.ANSWER:
+            return message.content
 
 
 
 
 
 if __name__ == '__main__':
-    for c_type, content in chat_stream("hello, what's your name?", '7485226919554859018'):
-        if c_type == "content":
-            print(content, end='', flush=True)
+    # for c_type, content in chat_stream("hello, what's your name?", '7485226919554859018'):
+    #     if c_type == "content":
+    #         print(content, end='', flush=True)
+    res = chat_no_stream("What's your name?", BOT_ID)
+    print(res)
 
 
 
