@@ -1,14 +1,18 @@
+import logging
 import os
 
 from cozepy import (
     COZE_CN_BASE_URL,
     ChatEventType,
+    ChatStatus,
     Coze,
     Message,
     MessageType,
     TokenAuth,
 )
 from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
 
 load_dotenv()  # take environment variables from .env.
 
@@ -56,6 +60,7 @@ def chat_stream(msg: str, bot_id:str, user_id:str = 'user id',
             if in_reasoning_block:
                 yield ("reasoning_end", "----- reasoning_content end -----")
             yield ("usage", f"Token usage: {event.chat.usage.token_count}")
+            logger.debug(f"Token usage: {event.chat.usage.token_count}")
 
 
 def chat_no_stream(msg: str, bot_id:str, user_id:str = 'user id',
@@ -71,9 +76,14 @@ def chat_no_stream(msg: str, bot_id:str, user_id:str = 'user id',
         conversation_id=conversation_id,
         additional_messages=[Message.build_user_question_text(msg)],
     )
+    content = None
     for message in chat_poll.messages:
         if message.type == MessageType.ANSWER:
-            return message.content
+            content = message.content
+    if chat_poll.chat.status == ChatStatus.COMPLETED:
+        logger.debug(f"Token usage: {chat_poll.chat.usage.token_count}")
+    return content
+
 
 
 
@@ -83,8 +93,13 @@ if __name__ == '__main__':
     # for c_type, content in chat_stream("hello, what's your name?", '7485226919554859018'):
     #     if c_type == "content":
     #         print(content, end='', flush=True)
+    # 创建一个 StreamHandler（默认输出到控制台）
+
+    from .utils import set_debug
+    set_debug(__name__)
     res = chat_no_stream("What's your name?", BOT_ID)
     print(res)
+
 
 
 
