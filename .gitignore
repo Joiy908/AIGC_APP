@@ -1,4 +1,4 @@
-winVenv
+.winVenv
 .archVenv
 __pycache__
 venv
