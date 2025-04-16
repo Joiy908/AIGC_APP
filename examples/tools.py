@@ -1,6 +1,6 @@
 import json
 import subprocess
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import requests
@@ -15,7 +15,7 @@ from .coze_llm import (
 
 
 def get_now_local_datetime() -> str:
-    return datetime.now().isoformat() + "+08:00"
+    return (datetime.now(tz=timezone.utc) + timedelta(hours=8)).isoformat()[:-6] + "+08:00"
 
 
 def execute_api_call(use_https: bool, domain: str, api_call: dict[str, Any], vorbose: bool) -> dict[str, any]:

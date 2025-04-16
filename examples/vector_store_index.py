@@ -1,6 +1,7 @@
 from llama_index.core import VectorStoreIndex
 from llama_index.core.retrievers import VectorIndexRetriever
-from loader import nodes
+
+from .loader import nodes
 
 index = VectorStoreIndex(nodes)
 
@@ -9,7 +10,7 @@ index = VectorStoreIndex(nodes)
 # configure retriever
 retriever = VectorIndexRetriever(
     index=index,
-    similarity_top_k=10,
+    similarity_top_k=3,
 )
 
 

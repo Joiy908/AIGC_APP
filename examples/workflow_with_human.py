@@ -23,9 +23,7 @@ async def dangerous_task(ctx: Context) -> str:
     )
 
     # wait until we see a HumanResponseEvent
-    response = await ctx.wait_for_event(
-        HumanResponseEvent, requirements={"user_name": "Laurie"}
-    )
+    response = await ctx.wait_for_event(HumanResponseEvent, requirements={"user_name": "Laurie"})
 
     # act on the input from the event
     if response.response.strip().lower() == "yes":
@@ -33,11 +31,15 @@ async def dangerous_task(ctx: Context) -> str:
     else:
         return "Dangerous task aborted."
 
+
+# todo: use ReactAgent instead of AgentWorkflow
 workflow = AgentWorkflow.from_tools_or_functions(
     [dangerous_task],
     llm=llm,
     system_prompt="You are a helpful assistant that can perform dangerous tasks.",
 )
+
+
 async def main():
     handler = workflow.run(user_msg="I want to proceed with the dangerous task.")
 
@@ -62,6 +64,8 @@ if __name__ == "__main__":
     from .coze_llm import __name__ as coze_name
     from .custom_llm import __name__ as cus_name
     from .utils import set_debug
+
     set_debug(coze_name, cus_name)
     import asyncio
+
     asyncio.run(main())
