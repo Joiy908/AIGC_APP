@@ -11,21 +11,12 @@ from llama_index.core.llms import (
 from llama_index.core.llms.callbacks import llm_completion_callback
 
 from .coze_llm import BOT_ID, USER_ID, chat_no_stream, chat_stream, coze
+from .utils import Colors
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
 
-# ANSI 颜色代码
-class Colors:
-    GREEN = '\033[92m'
-    RED = '\033[31m'
-    YELLOW = '\033[93m'
-    BLUE = '\033[94m'
-    BOLD = '\033[1m'
-    RESET = '\033[0m'
-    USER_PROMPT = YELLOW
-    RESPONSE = GREEN
 
 
 class CozeLLM(CustomLLM):
