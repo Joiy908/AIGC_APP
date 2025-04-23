@@ -25,8 +25,7 @@ USER_ID = "user id"
 coze = Coze(auth=TokenAuth(token=COZE_API_TOKEN), base_url=COZE_CN_BASE_URL)
 
 
-def chat_stream(msg: str, bot_id:str, user_id:str = 'user id',
-        conversation_id: str | None = None):
+def chat_stream(msg: str, bot_id: str, user_id: str = "user id", conversation_id: str | None = None):
     """
     Initiates chat. The response method is streaming.
     if there's not need to distinguish the context of the conversation(just a question and answer),
@@ -63,8 +62,7 @@ def chat_stream(msg: str, bot_id:str, user_id:str = 'user id',
             logger.debug(f"Token usage: {event.chat.usage.token_count}")
 
 
-def chat_no_stream(msg: str, bot_id:str, user_id:str = 'user id',
-        conversation_id: str | None = None):
+def chat_no_stream(msg: str, bot_id: str, user_id: str = "user id", conversation_id: str | None = None):
     """
     initiate a chat, The response method is non-streaming.
     if there's not need to distinguish the context of the conversation(just a question and answer),
@@ -85,21 +83,14 @@ def chat_no_stream(msg: str, bot_id:str, user_id:str = 'user id',
     return content
 
 
-
-
-
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     # for c_type, content in chat_stream("hello, what's your name?", '7485226919554859018'):
     #     if c_type == "content":
     #         print(content, end='', flush=True)
     # 创建一个 StreamHandler（默认输出到控制台）
 
     from .utils import set_debug
+
     set_debug(__name__)
     res = chat_no_stream("What's your name?", BOT_ID)
     print(res)
-
-
-
-
