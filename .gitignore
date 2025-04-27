@@ -6,3 +6,5 @@ venv
 embedding_models
 data
 cache
+.env
+.vscode
