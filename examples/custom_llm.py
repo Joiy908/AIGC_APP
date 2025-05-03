@@ -33,6 +33,7 @@ class CozeLLM(CustomLLM):
     coze: Coze = coze
     acoze: AsyncCoze = acoze
     conversation: Any = coze.conversations.create()
+    aconversation: Any = None
     bot_id: str = BOT_ID
     user_id: str = USER_ID
 
@@ -87,7 +88,9 @@ class CozeLLM(CustomLLM):
             if logger.isEnabledFor(logging.DEBUG):
                 print(f"{Colors.USER_PROMPT}User prompt: {prompt}{Colors.RESET}")
             response = ""
-            async for c_type, delta in achat_stream(prompt, self.bot_id, self.user_id, self.conversation.id):
+            if not self.aconversation:
+                self.aconversation = await self.acoze.conversations.create()
+            async for c_type, delta in achat_stream(prompt, self.bot_id, self.user_id, self.aconversation.id):
                 if c_type == "content":
                     response += delta
                     if logger.isEnabledFor(logging.DEBUG):

@@ -19,5 +19,5 @@ pipeline = IngestionPipeline(
 pipeline.load('./cache/pipeline_storage')
 
 nodes = pipeline.run(documents=docs, show_progress=True)
-pipeline.persist("./cache/pipeline_storage")
+# pipeline.persist("./cache/pipeline_storage")
 

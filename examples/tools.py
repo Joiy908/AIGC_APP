@@ -23,6 +23,7 @@ class ToolResponse(BaseModel):
     data: Optional[Any] = None
     message: str = ""
     format: Literal["json", "text", "markdown"]
+    call: str
 
 
 
@@ -30,11 +31,18 @@ def json_response(format: Literal["json", "text", "markdown"]):
     def decorator(func: Callable):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
+            args_str = ", ".join(repr(a) for a in args)
+            kwargs_str = ", ".join(f"{k}={repr(v)}" for k, v in kwargs.items())
+            call_str = f"{func.__name__}({', '.join(filter(None, [args_str, kwargs_str]))})"
             try:
                 result = func(*args, **kwargs)
-                return ToolResponse(success=True, data=result, message="", format=format).model_dump()
+                return ToolResponse(
+                    success=True, data=result, message="", format=format, call=call_str
+                ).model_dump_json()
             except Exception as e:
-                return ToolResponse(success=False, data=None, message=str(e), format=format).model_dump()
+                return ToolResponse(
+                    success=False, data=None, message=str(e), format=format, call=call_str
+                ).model_dump_json()
 
         return wrapper
     return decorator
