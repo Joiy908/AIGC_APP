@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package embedding;
+
+// 请求结构
+message TextRequest {
+  string text = 1;
+}
+
+// 响应结构
+message EmbeddingResponse {
+  repeated float embedding = 1;
+}
+
+// 服务定义
+service EmbeddingService {
+  rpc GetTextEmbedding (TextRequest) returns (EmbeddingResponse);
+}
