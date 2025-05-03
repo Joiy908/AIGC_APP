@@ -84,10 +84,14 @@ class CozeLLM(CustomLLM):
             assert self.messages_to_prompt is not None
             prompt = self.messages_to_prompt(messages)
 
+            if logger.isEnabledFor(logging.DEBUG):
+                print(f"{Colors.USER_PROMPT}User prompt: {prompt}{Colors.RESET}")
             response = ""
             async for c_type, delta in achat_stream(prompt, self.bot_id, self.user_id, self.conversation.id):
                 if c_type == "content":
                     response += delta
+                    if logger.isEnabledFor(logging.DEBUG):
+                        print(f"{Colors.RESPONSE}{delta}{Colors.RESET}", end="", flush=True)
                     yield ChatResponse(
                         message=ChatMessage(
                             role=MessageRole.ASSISTANT,

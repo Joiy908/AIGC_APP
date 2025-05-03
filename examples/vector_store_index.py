@@ -14,4 +14,4 @@ retriever = VectorIndexRetriever(
 )
 
 
-nodes = retriever.retrieve("什么时候浇水")
+# nodes = retriever.retrieve("什么时候浇水")

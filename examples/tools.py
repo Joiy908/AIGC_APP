@@ -1,10 +1,13 @@
+import functools
 import json
 import subprocess
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import Any, Callable, Literal, Optional
 
 import requests
 from cozepy import Message
+from llama_index.core.schema import NodeWithScore
+from pydantic import BaseModel
 
 from .coze_llm import (
     BOT_ID,
@@ -12,12 +15,59 @@ from .coze_llm import (
     chat_no_stream,
     coze,
 )
+from .vector_store_index import retriever as grape_retriever
 
 
+class ToolResponse(BaseModel):
+    success: bool
+    data: Optional[Any] = None
+    message: str = ""
+    format: Literal["json", "text", "markdown"]
+
+
+
+def json_response(format: Literal["json", "text", "markdown"]):
+    def decorator(func: Callable):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            try:
+                result = func(*args, **kwargs)
+                return ToolResponse(success=True, data=result, message="", format=format).model_dump()
+            except Exception as e:
+                return ToolResponse(success=False, data=None, message=str(e), format=format).model_dump()
+
+        return wrapper
+    return decorator
+
+
+@json_response(format='markdown')
+def get_grape_docs(query: str) -> list[str]:
+    """Get grape docs."""
+    res = []
+    node_with_scores: list[NodeWithScore] = grape_retriever.retrieve(query)
+    for node_s in node_with_scores:
+        node = node_s.node  # 获取内部 node
+        text = getattr(node, "text", "") or getattr(node, "get_text", lambda: "")()
+        metadata = getattr(node, "metadata", {})
+
+        # 只保留感兴趣的字段
+        useful_metadata_keys = ["file_path", "header_path"]
+        useful_metadata = {k: v for k, v in metadata.items() if k in useful_metadata_keys}
+
+        node_str = "📁 Metadata:\n"
+        for k, v in useful_metadata.items():
+            node_str += f"- {k}: {v}\n"
+
+        node_str += "📝 Text:\n" + text
+        res.append(node_str)
+    return '\n---\n'.join(res)
+
+@json_response(format="text")
 def get_now_local_datetime() -> str:
     return (datetime.now(tz=timezone.utc) + timedelta(hours=8)).isoformat()[:-6] + "+08:00"
 
 
+@json_response(format='json')
 def execute_api_call(use_https: bool, domain: str, api_call: dict[str, Any], vorbose: bool) -> dict[str, any]:
     """
     执行API调用，并返回响应结果。

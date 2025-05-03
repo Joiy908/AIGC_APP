@@ -1,6 +1,23 @@
+from typing import Any, Literal
+
+from llama_index.core.agent.react import ReActChatFormatter, ReActOutputParser
+from llama_index.core.agent.react.types import (
+    ActionReasoningStep,
+    ObservationReasoningStep,
+)
 from llama_index.core.llms import ChatMessage
-from llama_index.core.tools import ToolOutput, ToolSelection
-from llama_index.core.workflow import Event
+from llama_index.core.llms.llm import LLM
+from llama_index.core.memory import ChatMemoryBuffer
+from llama_index.core.tools import ToolSelection
+from llama_index.core.tools.types import BaseTool
+from llama_index.core.workflow import (
+    Context,
+    Event,
+    StartEvent,
+    StopEvent,
+    Workflow,
+    step,
+)
 
 
 class PrepEvent(Event):
@@ -15,9 +32,6 @@ class ToolCallEvent(Event):
     tool_calls: list[ToolSelection]
 
 
-# class FunctionOutputEvent(Event):
-#     output: ToolOutput
-
 # === only for message or log ===
 # class AnswerStream(Event):
 #     delta: str
@@ -25,36 +39,20 @@ class ToolCallEvent(Event):
 # class ToolCallMessage(Event):
 #     info: str
 
+
 class StreamEvent(Event):
     """content can be answer or tool call"""
+
     delta: str
+
 
 class ToolCallResultMessage(Event):
     output: str
 
+
+
 class StopSignal(Event):
     pass
-
-
-from typing import Any, List
-
-from llama_index.core.agent.react import ReActChatFormatter, ReActOutputParser
-from llama_index.core.agent.react.types import (
-    ActionReasoningStep,
-    ObservationReasoningStep,
-)
-from llama_index.core.base.llms.generic_utils import messages_to_prompt
-from llama_index.core.llms import CustomLLM
-from llama_index.core.llms.llm import LLM
-from llama_index.core.memory import ChatMemoryBuffer
-from llama_index.core.tools.types import BaseTool
-from llama_index.core.workflow import (
-    Context,
-    StartEvent,
-    StopEvent,
-    Workflow,
-    step,
-)
 
 
 class ReActAgent(Workflow):
@@ -99,7 +97,7 @@ class ReActAgent(Workflow):
     @step
     async def prepare_chat_history(self, ctx: Context, ev: PrepEvent) -> InputEvent:
         # get chat history
-        memory = await ctx.get("memory")
+        memory: ChatMemoryBuffer = await ctx.get("memory")
         chat_history = memory.get()
         current_reasoning = await ctx.get("current_reasoning", default=[])
 
@@ -168,14 +166,14 @@ class ReActAgent(Workflow):
         sources = await ctx.get("sources", default=[])
 
         # call tools -- safely!
-        for tool_call in tool_calls:
-            tool = tools_by_name.get(tool_call.tool_name)
-            if not tool:
-                current_reasoning.append(
-                    ObservationReasoningStep(observation=f"Tool {tool_call.tool_name} does not exist")
-                )
-                continue
-
+        # for tool_call in tool_calls:
+        tool_call = tool_calls[0]
+        tool = tools_by_name.get(tool_call.tool_name)
+        if not tool:
+            current_reasoning.append(
+                ObservationReasoningStep(observation=f"Tool {tool_call.tool_name} does not exist")
+            )
+        else:
             try:
                 tool_output = tool(**tool_call.tool_kwargs)
                 sources.append(tool_output)
@@ -183,6 +181,7 @@ class ReActAgent(Workflow):
                 current_reasoning.append(ObservationReasoningStep(observation=tool_output.content))
 
             except Exception as e:
+                # this will never achived, assert tool is err-free(catch err inside)
                 current_reasoning.append(
                     ObservationReasoningStep(observation=f"Error calling tool {tool.metadata.get_name()}: {e}")
                 )

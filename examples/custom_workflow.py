@@ -1,48 +1,16 @@
+from typing import Literal
+
 from llama_index.core import Settings
-from llama_index.core.schema import NodeWithScore
 from llama_index.core.tools import FunctionTool, QueryEngineTool, ToolMetadata
+from pydantic import BaseModel
 
 from .custom_llm import CozeLLM
 from .custom_reactagent import ReActAgent, StopSignal, StreamEvent, ToolCallResultMessage
-from .index_as_query_engine import index as grape_index
-from .tools import execute_api_call, get_now_local_datetime
+from .tools import execute_api_call, get_now_local_datetime, get_grape_docs
 from .utils import Colors
-from .vector_store_index import retriever as grape_retriever
 
 llm = CozeLLM()
 Settings.llm = llm
-
-grape_query_engine = grape_index.as_query_engine()
-
-docs_tool = QueryEngineTool(
-    query_engine=grape_query_engine,
-    metadata=ToolMetadata(
-        name="grape_query_engine",
-        description="Provide knowledges about grape",
-    ),
-)
-
-
-def get_grape_docs(query: str) -> list[str]:
-    """Get grape docs."""
-    res = []
-    node_with_scores: list[NodeWithScore] = grape_retriever.retrieve(query)
-    for node_s in node_with_scores:
-        node = node_s.node  # 获取内部 node
-        text = getattr(node, "text", "") or getattr(node, "get_text", lambda: "")()
-        metadata = getattr(node, "metadata", {})
-
-        # 只保留感兴趣的字段
-        useful_metadata_keys = ["file_path", "header_path"]
-        useful_metadata = {k: v for k, v in metadata.items() if k in useful_metadata_keys}
-
-        node_str = "📁 Metadata:"
-        for k, v in useful_metadata.items():
-            node_str += f"  {k}: {v}"
-
-        node_str += "\n📝 Text Preview:" + text
-        res.append(node_str)
-    return res
 
 
 docs_tool = FunctionTool.from_defaults(get_grape_docs)
