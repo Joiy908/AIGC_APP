@@ -24,7 +24,7 @@ from pydantic import PrivateAttr
 from grpc_embedding import get_embedding_pb2, get_embedding_pb2_grpc
 
 
-class CustomEmbeddings(BaseEmbedding):
+class CustomEmbedding(BaseEmbedding):
     _channel: grpc.Channel = PrivateAttr()
     _stub: get_embedding_pb2_grpc.EmbeddingServiceStub = PrivateAttr()
     def __init__(
@@ -62,6 +62,6 @@ class CustomEmbeddings(BaseEmbedding):
 
 
 if __name__ == '__main__':
-    x = CustomEmbeddings()
+    x = CustomEmbedding()
     print(x.get_query_embedding('sss'))
 
