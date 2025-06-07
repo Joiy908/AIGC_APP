@@ -192,3 +192,9 @@ class ReActAgent(Workflow):
 
         # prep the next iteraiton
         return PrepEvent()
+
+
+if __name__ == '__main__':
+    from llama_index.utils.workflow import draw_all_possible_flows
+
+    draw_all_possible_flows(ReActAgent, filename="my_workflow.html")

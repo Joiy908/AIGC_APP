@@ -1,5 +1,10 @@
+import mimetypes
+from contextlib import asynccontextmanager
+from pathlib import Path
+
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.responses import HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
 
 from examples.custom_llm import CozeLLM
 from examples.custom_reactagent import (
@@ -15,44 +20,42 @@ from examples.custom_workflow import (
     # llm,
 )
 
-app = FastAPI()
 
-html = """
-<!DOCTYPE html>
-<html>
-    <head>
-        <title>Chat</title>
-    </head>
-    <body>
-        <h1>WebSocket Chat</h1>
-        <h2>Your ID: <span id="ws-id"></span></h2>
-        <form action="" onsubmit="sendMessage(event)">
-            <input type="text" id="messageText" autocomplete="off"/>
-            <button>Send</button>
-        </form>
-        <ul id='messages'>
-        </ul>
-        <script>
-            var client_id = Date.now()
-            document.querySelector("#ws-id").textContent = client_id;
-            var ws = new WebSocket(`ws://localhost:8000/ws/${client_id}`);
-            ws.onmessage = function(event) {
-                var messages = document.getElementById('messages')
-                var message = document.createElement('li')
-                var content = document.createTextNode(event.data)
-                message.appendChild(content)
-                messages.appendChild(message)
-            };
-            function sendMessage(event) {
-                var input = document.getElementById("messageText")
-                ws.send(input.value)
-                input.value = ''
-                event.preventDefault()
-            }
-        </script>
-    </body>
-</html>
-"""
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # 处理windows 下返回 js MIME type 为 text/plain
+    mimetypes.init()
+    mimetypes.add_type('application/javascript', '.js')
+    mimetypes.add_type('text/css', '.css')
+    mimetypes.add_type('image/svg+xml', '.svg')
+    yield
+
+app = FastAPI(lifespan=lifespan)
+
+
+# 挂载静态文件
+app.mount("/assets", StaticFiles(directory="src/frontend/dist/assets"), name="assets")
+
+# 根路由返回 index.html
+@app.get("/")
+def serve_index():
+    return FileResponse("src/frontend/dist/index.html")
+
+@app.get("/favicon.ico")
+def serve_ico():
+    return FileResponse("src/frontend/dist/favicon.ico")
+
+@app.get("/grape.md")
+def serve_md():
+    return FileResponse("src/frontend/dist/grape.md")
+
+# 捕获所有未匹配的路由，返回 Vue 的 index.html
+@app.get("/{path:path}", include_in_schema=False)
+async def serve_spa(path: str):
+    index_path = Path("src/frontend/dist/index.html")
+    if index_path.exists():
+        return HTMLResponse(content=index_path.read_text(), status_code=200)
+    return {"error": "index.html not found"}
 
 
 class ConnectionManager:
@@ -73,14 +76,7 @@ class ConnectionManager:
         for connection in self.active_connections:
             await connection.send_text(message)
 
-
 manager = ConnectionManager()
-
-
-@app.get("/")
-async def get():
-    return HTMLResponse(html)
-
 
 @app.websocket("/ws/{client_id}")
 async def websocket_endpoint(websocket: WebSocket, client_id: int):
